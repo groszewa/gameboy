@@ -19,7 +19,7 @@ void Cpu::step() {
                 uint8_t imm = bus.read(this->pc++);
                 uint16_t wide_result = static_cast<uint16_t>(this->a) + imm;
 
-                // FIXME - set flags
+                // Set Flags
                 // Zero (Z)
                 if((wide_result&0xff)==0) this->f |= FLAG_Z;
                 // Subtraction (N) - cannot be set for Add
@@ -27,6 +27,21 @@ void Cpu::step() {
                 if (((this->a & 0xf) + (imm & 0xf)) > 0xf) this->f |= FLAG_H;
                 // Carry (C)
                 if(wide_result > 0xff) this->f |= FLAG_C;
+
+                this->a = static_cast<uint8_t>(wide_result);
+                break;
+            }
+        case 0xee:
+            {
+                uint8_t imm = bus.read(this->pc++);
+                uint16_t wide_result = static_cast<uint16_t>(this->a) ^ imm;
+
+                // Set Flags
+                // Zero (Z)
+                if((wide_result&0xff)==0) this->f |= FLAG_Z;
+                // Subtraction (N) - cannot be set for Xor
+                // Half Carry (H) - cannot be set for Xor
+                // Carry (C) - cannot be set for Xor
 
                 this->a = static_cast<uint8_t>(wide_result);
                 break;
