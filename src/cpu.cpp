@@ -1,5 +1,6 @@
 #include "cpu.h"
 #include <sstream>
+#include "logging.h"
 
 Cpu::Cpu(Bus& bus_) : bus(bus_){}
 
@@ -11,7 +12,7 @@ void Cpu::reset() {
 
 void Cpu::step() {
     uint8_t opcode = bus.read(pc++);
-    //printf("Current opcode is 0x%x\n", opcode);
+    GB_LOG("Current opcode is 0x%x\n", opcode);
     switch(opcode) {
         case 0xc6:
             {
