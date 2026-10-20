@@ -12,7 +12,7 @@ void Cpu::reset() {
 
 void Cpu::step() {
     uint8_t opcode = bus.read(pc++);
-    GB_LOG("Current opcode is 0x%x\n", opcode);
+    //GB_LOG("Current opcode is 0x%x\n", opcode);
     switch(opcode) {
         case 0xc6:
             {

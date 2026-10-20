@@ -46,6 +46,20 @@ TEST_CASE("0xc6: add a, imm8") {
         CHECK_MESSAGE(cpu.f == (Cpu::FLAG_Z | Cpu::FLAG_H | Cpu::FLAG_C),
                       "f=" << hex8(cpu.f) << " expected=" << hex8(static_cast<uint8_t>(Cpu::FLAG_Z | Cpu::FLAG_H | Cpu::FLAG_C)));
     }
+    SUBCASE("N always clear") {
+        // ADD must never set the subtract flag, for any of the 65536 input pairs.
+        int violations = 0;
+        for (int a = 0; a < 256; ++a) {
+            for (int imm = 0; imm < 256; ++imm) {
+                bus.write(0x0001, static_cast<uint8_t>(imm));
+                cpu.reset();
+                cpu.a = static_cast<uint8_t>(a);
+                cpu.step();
+                if (cpu.f & Cpu::FLAG_N) ++violations;
+            }
+        }
+        CHECK(violations == 0);
+    }
 }
 
 TEST_CASE("0xee: xor a, imm8") {
@@ -84,5 +98,25 @@ TEST_CASE("0xee: xor a, imm8") {
         cpu.step();
         CHECK(cpu.a == 0x00);
         CHECK_MESSAGE(cpu.f == Cpu::FLAG_Z, "f=" << hex8(cpu.f) << " expected=" << hex8(Cpu::FLAG_Z));
+    }
+    SUBCASE("N/H/C always clear") {
+        // XOR must never set N, H, or C, for any of the 65536 input pairs.
+        int violations = 0;
+        int first_a = -1, first_imm = -1;
+        for (int a = 0; a < 256; ++a) {
+            for (int imm = 0; imm < 256; ++imm) {
+                bus.write(0x0001, static_cast<uint8_t>(imm));
+                cpu.reset();
+                cpu.a = static_cast<uint8_t>(a);
+                cpu.step();
+                if (cpu.f & (Cpu::FLAG_N | Cpu::FLAG_H | Cpu::FLAG_C)) {
+                    if (violations == 0) { first_a = a; first_imm = imm; }
+                    ++violations;
+                }
+            }
+        }
+        CHECK_MESSAGE(violations == 0,
+                      violations << " violating pairs; first at a=" << hex8(static_cast<uint8_t>(first_a))
+                                 << " imm=" << hex8(static_cast<uint8_t>(first_imm)));
     }
 }
