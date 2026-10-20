@@ -5,6 +5,7 @@
 
 BUILD_DIR  := build
 BUILD_TYPE := Debug
+SANTIZE    := OF
 
 .PHONY: all build test clean
 
