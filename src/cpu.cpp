@@ -36,19 +36,24 @@ void Cpu::xor8(uint8_t rhs) {
     f = (a==0) ? FLAG_Z : 0;
 }
 
-void Cpu::step() {
-    uint8_t opcode = bus.read(pc++);
+int Cpu::step() {
+    uint8_t opcode = fetch8();
+    int cycles = 0; // Referece: https://gbdev.io/gb-opcodes/optables/
     //GB_LOG("Current opcode is 0x%x\n", opcode);
     switch(opcode) {
         case 0xc6:
             add8(fetch8());
+            cycles = 8;
             break;
         case 0xee:
             xor8(fetch8());
+            cycles = 8;
             break;
         default:
             std::ostringstream msg;
+        
             msg << "Unknown opcode 0x" << std::hex << static_cast<int>(opcode);
             throw std::runtime_error(msg.str());
     }
+    return cycles;
 }

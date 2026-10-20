@@ -10,8 +10,8 @@ public:
     explicit Cpu(Bus& bus);
     void reset();
 
-    // Executes a single instruction. (Cycle counting comes later.)
-    void step();
+    // Executes a single instruction and returns elapsed cycles
+    int step();
 
     uint8_t a, f;
     uint16_t pc;
