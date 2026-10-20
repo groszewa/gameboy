@@ -24,4 +24,16 @@ public:
 
 private:
     Bus& bus;
+
+    uint8_t fetch8() { return bus.read(pc++); };
+
+    struct AluResult {
+        uint8_t value;
+        uint8_t flags;
+    };
+    static AluResult alu_add(uint8_t lhs, uint8_t rhs, bool carry_in);
+
+    // Thin wrappers: apply result to a/f
+    void add8(uint8_t rhs);
+    void xor8(uint8_t rhs);
 };
