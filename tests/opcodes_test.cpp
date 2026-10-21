@@ -17,6 +17,17 @@ static std::string hex8(uint8_t v) {
     return buf;
 }
 
+static void set_operand(Cpu& cpu, [[maybe_unused]] Bus& bus, int idx, uint8_t val) {
+    switch(idx) {
+        case 0:
+            cpu.b = val;
+            break;
+        case 1:
+            cpu.c = val;
+            break;
+    }
+}
+
 TEST_CASE("0xc6: add a, imm8") {
     Bus bus;
     Cpu cpu(bus);
@@ -26,6 +37,7 @@ TEST_CASE("0xc6: add a, imm8") {
         bus.write(0x0001, 0x05);
         cpu.reset();
         CHECK(cpu.step() == 8);
+        CHECK(cpu.pc == 2);
         CHECK(cpu.a == 0x05);
         CHECK_MESSAGE(cpu.f == 0x00, "f=" << hex8(cpu.f) << " expected=0x00");
     }
@@ -34,6 +46,7 @@ TEST_CASE("0xc6: add a, imm8") {
         cpu.reset();
         cpu.a = 0x0f;
         CHECK(cpu.step() == 8);
+        CHECK(cpu.pc == 2);
         CHECK(cpu.a == 0x10);
         CHECK_MESSAGE(cpu.f == Cpu::FLAG_H, "f=" << hex8(cpu.f) << " expected=" << hex8(Cpu::FLAG_H));
     }
@@ -42,6 +55,7 @@ TEST_CASE("0xc6: add a, imm8") {
         cpu.reset();
         cpu.a = 0xff;
         CHECK(cpu.step() == 8);
+        CHECK(cpu.pc == 2);
         CHECK(cpu.a == 0x00);
         CHECK_MESSAGE(cpu.f == (Cpu::FLAG_Z | Cpu::FLAG_H | Cpu::FLAG_C),
                       "f=" << hex8(cpu.f) << " expected=" << hex8(static_cast<uint8_t>(Cpu::FLAG_Z | Cpu::FLAG_H | Cpu::FLAG_C)));
@@ -62,6 +76,63 @@ TEST_CASE("0xc6: add a, imm8") {
     }
 }
 
+TEST_CASE("0x80-0x87: add a, reg") {
+    Bus bus;
+    Cpu cpu(bus);
+    uint8_t opcode_base = 0x80;
+
+    // Register field values, in opcode order
+    struct Case { const char* name; int idx; };
+    const Case cases[] = {{"b", 0}, {"c", 1}};
+    for(const auto& tc : cases) {
+        bus.write(0x0000, static_cast<uint8_t>(opcode_base + tc.idx)); // opcode = base + reg
+        SUBCASE(tc.name) {
+            SUBCASE("no flags") {
+                cpu.reset();
+                cpu.a = 0x05;
+                set_operand(cpu, bus, tc.idx, 0x01);
+                CHECK(cpu.step() == 4);
+                CHECK(cpu.pc == 1);
+                CHECK(cpu.a == 0x06);
+                CHECK_MESSAGE(cpu.f == 0x00, "f=" << hex8(cpu.f) << " expected=0x00");
+            }
+            SUBCASE("half carry") {
+                cpu.reset();
+                cpu.a = 0x0f;
+                set_operand(cpu, bus, tc.idx, 0x01);
+                CHECK(cpu.step() == 4);
+                CHECK(cpu.pc == 1);
+                CHECK(cpu.a == 0x10);
+                CHECK_MESSAGE(cpu.f == Cpu::FLAG_H, "f=" << hex8(cpu.f) << " expected=" << hex8(Cpu::FLAG_H));
+            }
+            SUBCASE("wraps to zero with carry") {
+                cpu.reset();
+                cpu.a = 0xff;
+                set_operand(cpu, bus, tc.idx, 0x01);
+                CHECK(cpu.step() == 4);
+                CHECK(cpu.pc == 1);
+                CHECK(cpu.a == 0x00);
+                CHECK_MESSAGE(cpu.f == (Cpu::FLAG_Z | Cpu::FLAG_H | Cpu::FLAG_C),
+                        "f=" << hex8(cpu.f) << " expected=" << hex8(static_cast<uint8_t>(Cpu::FLAG_Z | Cpu::FLAG_H | Cpu::FLAG_C)));
+            }
+            SUBCASE("N always clear") {
+                // ADD must never set the subtract flag, for any of the 65536 input pairs.
+                int violations = 0;
+                for (int a = 0; a < 256; ++a) {
+                    for (int i = 0; i < 256; ++i) {
+                        cpu.reset();
+                        set_operand(cpu, bus, tc.idx, i);
+                        cpu.a = static_cast<uint8_t>(a);
+                        int cycles = cpu.step();
+                        if ((cpu.f & Cpu::FLAG_N) or (cycles!=4)) ++violations;
+                    }
+                }
+                CHECK(violations == 0);
+            }
+    }
+}
+}
+
 TEST_CASE("0xee: xor a, imm8") {
     Bus bus;
     Cpu cpu(bus);
@@ -72,6 +143,7 @@ TEST_CASE("0xee: xor a, imm8") {
         cpu.reset();
         cpu.a = 0xff;
         CHECK(cpu.step() == 8);
+        CHECK(cpu.pc == 2);
         CHECK(cpu.a == 0x00);
         CHECK_MESSAGE(cpu.f == Cpu::FLAG_Z, "f=" << hex8(cpu.f) << " expected=" << hex8(Cpu::FLAG_Z));
     }
@@ -80,6 +152,7 @@ TEST_CASE("0xee: xor a, imm8") {
         cpu.reset();
         cpu.a = 0x42;
         CHECK(cpu.step() == 8);
+        CHECK(cpu.pc == 2);
         CHECK(cpu.a == 0x42);
         CHECK_MESSAGE(cpu.f == 0x00, "f=" << hex8(cpu.f) << " expected=0x00");
     }
@@ -88,6 +161,7 @@ TEST_CASE("0xee: xor a, imm8") {
         cpu.reset();
         cpu.a = 0x0f;
         CHECK(cpu.step() == 8);
+        CHECK(cpu.pc == 2);
         CHECK(cpu.a == 0xff);
         CHECK_MESSAGE(cpu.f == 0x00, "f=" << hex8(cpu.f) << " expected=0x00");
     }
@@ -96,6 +170,7 @@ TEST_CASE("0xee: xor a, imm8") {
         cpu.reset();
         cpu.a = 0x00;
         CHECK(cpu.step() == 8);
+        CHECK(cpu.pc == 2);
         CHECK(cpu.a == 0x00);
         CHECK_MESSAGE(cpu.f == Cpu::FLAG_Z, "f=" << hex8(cpu.f) << " expected=" << hex8(Cpu::FLAG_Z));
     }

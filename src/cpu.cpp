@@ -6,6 +6,8 @@ Cpu::Cpu(Bus& bus_) : bus(bus_){}
 
 void Cpu::reset() {
     this->a = 0;
+    this->b = 0;
+    this->c = 0;
     this->f = 0;
     this->pc = 0;
 }
@@ -26,14 +28,14 @@ Cpu::AluResult Cpu::alu_add(uint8_t lhs, uint8_t rhs, bool carry_in) {
 }
 
 void Cpu::add8(uint8_t rhs) {
-    auto r = alu_add(a, rhs, false);
-    a = r.value;
-    f = r.flags;
+    auto r = alu_add(this->a, rhs, false);
+    this->a = r.value;
+    this->f = r.flags;
 }
 
 void Cpu::xor8(uint8_t rhs) {
-    a ^= rhs;
-    f = (a==0) ? FLAG_Z : 0;
+    this->a ^= rhs;
+    this->f = (this->a==0) ? FLAG_Z : 0;
 }
 
 int Cpu::step() {
@@ -41,6 +43,14 @@ int Cpu::step() {
     int cycles = 0; // Referece: https://gbdev.io/gb-opcodes/optables/
     //GB_LOG("Current opcode is 0x%x\n", opcode);
     switch(opcode) {
+        case 0x80:
+            add8(this->b);
+            cycles = 4;
+            break;
+        case 0x81:
+            add8(this->c);
+            cycles = 4;
+            break;
         case 0xc6:
             add8(fetch8());
             cycles = 8;
