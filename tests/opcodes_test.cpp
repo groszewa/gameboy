@@ -17,7 +17,7 @@ static std::string hex8(uint8_t v) {
     return buf;
 }
 
-static void set_operand(Cpu& cpu, [[maybe_unused]] Bus& bus, int idx, uint8_t val) {
+static void set_operand(Cpu& cpu, Bus& bus, int idx, uint8_t val) {
     switch(idx) {
         case 0:
             cpu.b = val;
@@ -36,6 +36,13 @@ static void set_operand(Cpu& cpu, [[maybe_unused]] Bus& bus, int idx, uint8_t va
             break;
         case 5:
             cpu.l = val;
+            break;
+        case 6:
+            {
+                cpu.h = 0xc0;
+                cpu.l = 0x00;
+                bus.write((cpu.h << 8) | cpu.l, val);
+            }
             break;
     }
 }
@@ -95,15 +102,16 @@ TEST_CASE("0x80-0x87: add a, reg") {
 
     // Register field values, in opcode order
     struct Case { const char* name; int idx; };
-    const Case cases[] = {{"b", 0}, {"c", 1}, {"d", 2}, {"e", 3}, {"h", 4}, {"l", 5}};
+    const Case cases[] = {{"b", 0}, {"c", 1}, {"d", 2}, {"e", 3}, {"h", 4}, {"l", 5}, {"[hl]", 6}};
     for(const auto& tc : cases) {
+        int expected_cycles = (tc.idx==6) ? 8 : 4;
         bus.write(0x0000, static_cast<uint8_t>(opcode_base + tc.idx)); // opcode = base + reg
         SUBCASE(tc.name) {
             SUBCASE("no flags") {
                 cpu.reset();
                 cpu.a = 0x05;
                 set_operand(cpu, bus, tc.idx, 0x01);
-                CHECK(cpu.step() == 4);
+                CHECK(cpu.step() == expected_cycles);
                 CHECK(cpu.pc == 1);
                 CHECK(cpu.a == 0x06);
                 CHECK_MESSAGE(cpu.f == 0x00, "f=" << hex8(cpu.f) << " expected=0x00");
@@ -112,7 +120,7 @@ TEST_CASE("0x80-0x87: add a, reg") {
                 cpu.reset();
                 cpu.a = 0x0f;
                 set_operand(cpu, bus, tc.idx, 0x01);
-                CHECK(cpu.step() == 4);
+                CHECK(cpu.step() == expected_cycles);
                 CHECK(cpu.pc == 1);
                 CHECK(cpu.a == 0x10);
                 CHECK_MESSAGE(cpu.f == Cpu::FLAG_H, "f=" << hex8(cpu.f) << " expected=" << hex8(Cpu::FLAG_H));
@@ -121,7 +129,7 @@ TEST_CASE("0x80-0x87: add a, reg") {
                 cpu.reset();
                 cpu.a = 0xff;
                 set_operand(cpu, bus, tc.idx, 0x01);
-                CHECK(cpu.step() == 4);
+                CHECK(cpu.step() == expected_cycles);
                 CHECK(cpu.pc == 1);
                 CHECK(cpu.a == 0x00);
                 CHECK_MESSAGE(cpu.f == (Cpu::FLAG_Z | Cpu::FLAG_H | Cpu::FLAG_C),
@@ -136,13 +144,82 @@ TEST_CASE("0x80-0x87: add a, reg") {
                         set_operand(cpu, bus, tc.idx, i);
                         cpu.a = static_cast<uint8_t>(a);
                         int cycles = cpu.step();
-                        if ((cpu.f & Cpu::FLAG_N) or (cycles!=4)) ++violations;
+                        if ((cpu.f & Cpu::FLAG_N) or (cycles!=expected_cycles)) ++violations;
                     }
                 }
                 CHECK(violations == 0);
             }
+        }
     }
 }
+
+TEST_CASE("0x86: add a, [hl]") {
+    Bus bus;
+    Cpu cpu(bus);
+    // 2 copies same opcode to enable b2b execution
+    bus.write(0x0000, 0x86);
+    bus.write(0x0001, 0x86);
+
+    // Register sweep always points hl at 0xc000, so it can't catch an implementation that reads a fixed
+    // or misdecoded address.  Vary HL and check that the value added follows the pointer
+    SUBCASE("follow the pointer") {
+        uint16_t addr1 = 0xc000;
+        uint8_t  data1 = 0x10;
+        bus.write(addr1, data1);
+        uint16_t addr2 = 0xc100;
+        uint8_t  data2 = 0x20;
+        bus.write(addr2, data2);
+        cpu.reset();
+        cpu.h = addr1 >> 8;
+        cpu.l = addr1 & 0xff;
+        CHECK(cpu.step() == 8);
+        CHECK(cpu.pc == 1);
+        CHECK(cpu.a == data1);
+        cpu.h = addr2 >> 8;
+        cpu.l = addr2 & 0xff;
+        CHECK(cpu.step() == 8);
+        CHECK(cpu.pc == 2);
+        CHECK(cpu.a == data1 + data2);
+    }
+    // Only l changes between steps: catches implementation that drops the low byte and always reads the
+    // page base (H << 8)
+    SUBCASE("full address decoded") {
+        uint16_t addr1 = 0xc000;
+        uint8_t  data1 = 0x10;
+        bus.write(addr1, data1);
+        uint16_t addr2 = 0xc001;
+        uint8_t  data2 = 0x20;
+        bus.write(addr2, data2);
+        cpu.reset();
+        cpu.h = addr1 >> 8;
+        cpu.l = addr1 & 0xff;
+        CHECK(cpu.step() == 8);
+        CHECK(cpu.pc == 1);
+        CHECK(cpu.a == data1);
+        cpu.h = addr2 >> 8;
+        cpu.l = addr2 & 0xff;
+        CHECK(cpu.step() == 8);
+        CHECK(cpu.pc == 2);
+        CHECK(cpu.a == data1 + data2);
+    }
+    // Plain (HL) addressing never modifies the pair (unlike hl+/hl- load instructions).  Check h and l
+    // directly, not just result
+    SUBCASE("h and l unchanged") {
+        uint16_t addr1 = 0xc000;
+        uint8_t  data1 = 0x10;
+        bus.write(addr1, data1);
+        cpu.reset();
+        cpu.h = addr1 >> 8;
+        cpu.l = addr1 & 0xff;
+        CHECK(cpu.step() == 8);
+        CHECK(cpu.pc == 1);
+        CHECK(cpu.a == data1);
+        CHECK(cpu.step() == 8);
+        CHECK(cpu.pc == 2);
+        CHECK(cpu.a == 2*data1);
+        CHECK(cpu.h == (addr1 >> 8));
+        CHECK(cpu.l == (addr1 & 0xff));
+    }
 }
 
 TEST_CASE("0xee: xor a, imm8") {

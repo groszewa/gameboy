@@ -71,6 +71,13 @@ int Cpu::step() {
             add8(this->l);
             cycles = 4;
             break;
+        case 0x86:
+            {
+                uint16_t hl = static_cast<uint16_t>(h)<<8 | l;
+                add8(bus.read(hl));
+                cycles = 8;
+            }
+            break;
         case 0xc6:
             add8(fetch8());
             cycles = 8;
