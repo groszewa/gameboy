@@ -13,7 +13,8 @@ public:
     // Executes a single instruction and returns elapsed cycles
     int step();
 
-    uint8_t a, b, c, f;
+    uint8_t a, b, c, d, e, h, l;
+    uint8_t f; // flags
     uint16_t pc;
 
     // Flag bits (upper nibble of F)

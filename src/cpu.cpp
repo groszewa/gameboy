@@ -8,6 +8,10 @@ void Cpu::reset() {
     this->a = 0;
     this->b = 0;
     this->c = 0;
+    this->d = 0;
+    this->e = 0;
+    this->h = 0;
+    this->l = 0;
     this->f = 0;
     this->pc = 0;
 }
@@ -49,6 +53,22 @@ int Cpu::step() {
             break;
         case 0x81:
             add8(this->c);
+            cycles = 4;
+            break;
+        case 0x82:
+            add8(this->d);
+            cycles = 4;
+            break;
+        case 0x83:
+            add8(this->e);
+            cycles = 4;
+            break;
+        case 0x84:
+            add8(this->h);
+            cycles = 4;
+            break;
+        case 0x85:
+            add8(this->l);
             cycles = 4;
             break;
         case 0xc6:

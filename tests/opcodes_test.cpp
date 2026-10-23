@@ -25,6 +25,18 @@ static void set_operand(Cpu& cpu, [[maybe_unused]] Bus& bus, int idx, uint8_t va
         case 1:
             cpu.c = val;
             break;
+        case 2:
+            cpu.d = val;
+            break;
+        case 3:
+            cpu.e = val;
+            break;
+        case 4:
+            cpu.h = val;
+            break;
+        case 5:
+            cpu.l = val;
+            break;
     }
 }
 
@@ -83,7 +95,7 @@ TEST_CASE("0x80-0x87: add a, reg") {
 
     // Register field values, in opcode order
     struct Case { const char* name; int idx; };
-    const Case cases[] = {{"b", 0}, {"c", 1}};
+    const Case cases[] = {{"b", 0}, {"c", 1}, {"d", 2}, {"e", 3}, {"h", 4}, {"l", 5}};
     for(const auto& tc : cases) {
         bus.write(0x0000, static_cast<uint8_t>(opcode_base + tc.idx)); // opcode = base + reg
         SUBCASE(tc.name) {
