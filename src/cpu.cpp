@@ -78,6 +78,12 @@ int Cpu::step() {
                 cycles = 8;
             }
             break;
+        case 0x87:
+            GB_LOG("a pre = 0x%x\n", this->a);
+            add8(this->a);
+            GB_LOG("a pst = 0x%x\n", this->a);
+            cycles = 4;
+            break;
         case 0xc6:
             add8(fetch8());
             cycles = 8;

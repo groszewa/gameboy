@@ -95,7 +95,7 @@ TEST_CASE("0xc6: add a, imm8") {
     }
 }
 
-TEST_CASE("0x80-0x87: add a, reg") {
+TEST_CASE("0x80-0x86: add a, reg") {
     Bus bus;
     Cpu cpu(bus);
     uint8_t opcode_base = 0x80;
@@ -219,6 +219,74 @@ TEST_CASE("0x86: add a, [hl]") {
         CHECK(cpu.a == 2*data1);
         CHECK(cpu.h == (addr1 >> 8));
         CHECK(cpu.l == (addr1 & 0xff));
+    }
+}
+
+TEST_CASE("0x87: add, a, a") {
+    Bus bus;
+    Cpu cpu(bus);
+    bus.write(0x0000, 0x87);
+    bus.write(0x0001, 0x87);
+    bus.write(0x0002, 0x87);
+
+    SUBCASE("no flags") {
+        cpu.reset();
+        cpu.a = 0x01;
+        CHECK(cpu.step() == 4);
+        CHECK(cpu.pc == 1);
+        CHECK(cpu.a == 0x02);
+        CHECK_MESSAGE(cpu.f == 0x00, "f=" << hex8(cpu.f) << " expected=0x00");
+        CHECK(cpu.step() == 4);
+        CHECK(cpu.pc == 2);
+        CHECK(cpu.a == 0x04);
+        CHECK_MESSAGE(cpu.f == 0x00, "f=" << hex8(cpu.f) << " expected=0x00");
+        CHECK(cpu.step() == 4);
+        CHECK(cpu.pc == 3);
+        CHECK(cpu.a == 0x08);
+        CHECK_MESSAGE(cpu.f == 0x00, "f=" << hex8(cpu.f) << " expected=0x00");
+    }
+    SUBCASE("0x0 sets zero flag") {
+        cpu.reset();
+        CHECK(cpu.step() == 4);
+        CHECK(cpu.pc == 1);
+        CHECK(cpu.a == 0x00);
+        CHECK_MESSAGE(cpu.f == Cpu::FLAG_Z, "f=" << hex8(cpu.f) << " expected=" << hex8(Cpu::FLAG_Z));
+    }
+    SUBCASE("0x80 sets zero flag") {
+        cpu.reset();
+        cpu.a = 0x80;
+        CHECK(cpu.step() == 4);
+        CHECK(cpu.pc == 1);
+        CHECK(cpu.a == 0x00);
+        CHECK((cpu.f & Cpu::FLAG_Z) == Cpu::FLAG_Z);
+    }
+    SUBCASE("FLAG_H set when a >= 0x08") {
+        for(uint8_t i = 0x0; i < 0x08; i++) {
+            cpu.reset();
+            cpu.a = i;
+            cpu.step();
+            CHECK((cpu.f & Cpu::FLAG_H) == 0x00);
+        }
+        for(uint8_t i = 0x08; i < 0x10; i++) {
+            cpu.reset();
+            cpu.a = i;
+            cpu.step();
+            CHECK((cpu.f & Cpu::FLAG_H) == Cpu::FLAG_H);
+        }
+    }
+    SUBCASE("FLAG_C set when >= 0x80") {
+        for(uint8_t i = 0x0; i < 0x80; i++) {
+            cpu.reset();
+            cpu.a = i;
+            cpu.step();
+            CHECK((cpu.f & Cpu::FLAG_C) == 0x00);
+        }
+        for(uint16_t i = 0x0080; i < 0x0100; i++) {
+            cpu.reset();
+            cpu.a = static_cast<uint8_t>(i);
+            cpu.step();
+            CHECK((cpu.f & Cpu::FLAG_C) == Cpu::FLAG_C);
+        }
     }
 }
 
