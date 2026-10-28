@@ -50,28 +50,41 @@ void Cpu::set_c_flag(bool v) {
 
 Cpu::AluResult Cpu::alu_add(uint8_t lhs, uint8_t rhs, bool carry_in) {
     uint16_t sum = static_cast<uint16_t>(lhs) + rhs + (carry_in ? 1 : 0);
-    uint8_t flags = 0;
-    if ((sum & 0xff) == 0) {
-        flags  |= FLAG_Z;
-    }
-    if (((lhs & 0xF) + (rhs & 0xF) + (carry_in ? 1 : 0)) > 0xF) {
-        flags |= FLAG_H;
-    }
-    if (sum > 0xff) {
-        flags |= FLAG_C;
-    }
-    return {static_cast<uint8_t>(sum), flags};
+    AluResult r;
+    r.value = static_cast<uint8_t>(sum);
+    r.flags.z = ((sum & 0xff) == 0);
+    r.flags.n = false;
+    r.flags.h = (((lhs & 0xF) + (rhs & 0xF) + (carry_in ? 1 : 0)) > 0xF);
+    r.flags.c = (sum > 0xff);
+    return r;
+}
+
+void Cpu::apply_flags(Flags fl) {
+    set_z_flag(fl.z);
+    set_n_flag(fl.n);
+    set_h_flag(fl.h);
+    set_c_flag(fl.c);
+}
+
+void Cpu::load_flags(uint8_t v) {
+    set_z_flag(v & FLAG_Z);
+    set_n_flag(v & FLAG_N);
+    set_h_flag(v & FLAG_H);
+    set_c_flag(v & FLAG_C);
 }
 
 void Cpu::add8(uint8_t rhs) {
     auto r = alu_add(this->a, rhs, false);
     this->a = r.value;
-    this->f = r.flags;
+    apply_flags(r.flags);
 }
 
 void Cpu::xor8(uint8_t rhs) {
     this->a ^= rhs;
-    this->f = (this->a==0) ? FLAG_Z : 0;
+    set_z_flag(this->a==0);
+    set_n_flag(false);
+    set_h_flag(false);
+    set_c_flag(false);
 }
 
 int Cpu::step() {
