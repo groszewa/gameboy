@@ -23,6 +23,16 @@ public:
     static constexpr uint8_t FLAG_H = 0x20;
     static constexpr uint8_t FLAG_C = 0x10;
 
+    // Flag getters and setters for convenience
+    bool get_z_flag();
+    void set_z_flag(bool v);
+    bool get_n_flag();
+    void set_n_flag(bool v);
+    bool get_h_flag();
+    void set_h_flag(bool v);
+    bool get_c_flag();
+    void set_c_flag(bool v);
+
 private:
     Bus& bus;
 

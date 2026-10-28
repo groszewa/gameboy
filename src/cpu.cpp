@@ -16,6 +16,38 @@ void Cpu::reset() {
     this->pc = 0;
 }
 
+bool Cpu::get_z_flag() {
+    return this->f & FLAG_Z;
+}
+
+void Cpu::set_z_flag(bool v) {
+    this->f = (f & ~FLAG_Z) | (v ? FLAG_Z : 0);
+}
+
+bool Cpu::get_n_flag() {
+    return this->f & FLAG_N;
+}
+
+void Cpu::set_n_flag(bool v) {
+    this->f = (f & ~FLAG_N) | (v ? FLAG_N : 0);
+}
+
+bool Cpu::get_h_flag() {
+    return this->f & FLAG_H;
+}
+
+void Cpu::set_h_flag(bool v) {
+    this->f = (f & ~FLAG_H) | (v ? FLAG_H : 0);
+}
+
+bool Cpu::get_c_flag() {
+    return this->f & FLAG_C;
+}
+
+void Cpu::set_c_flag(bool v) {
+    this->f = (f & ~FLAG_C) | (v ? FLAG_C : 0);
+}
+
 Cpu::AluResult Cpu::alu_add(uint8_t lhs, uint8_t rhs, bool carry_in) {
     uint16_t sum = static_cast<uint16_t>(lhs) + rhs + (carry_in ? 1 : 0);
     uint8_t flags = 0;
@@ -79,9 +111,7 @@ int Cpu::step() {
             }
             break;
         case 0x87:
-            GB_LOG("a pre = 0x%x\n", this->a);
             add8(this->a);
-            GB_LOG("a pst = 0x%x\n", this->a);
             cycles = 4;
             break;
         case 0xc6:
