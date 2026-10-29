@@ -47,12 +47,13 @@ private:
         Flags flags;
     };
 
-    void apply_flags(Flags fl);
+    void apply_flags(Flags f);
     void load_flags(uint8_t v);
 
     static AluResult alu_add(uint8_t lhs, uint8_t rhs, bool carry_in);
 
     // Thin wrappers: apply result to a/f
     void add8(uint8_t rhs);
+    void adc8(uint8_t rhs);
     void xor8(uint8_t rhs);
 };

@@ -79,6 +79,12 @@ void Cpu::add8(uint8_t rhs) {
     apply_flags(r.flags);
 }
 
+void Cpu::adc8(uint8_t rhs) {
+    auto r = alu_add(this->a, rhs, this->get_c_flag());
+    this->a = r.value;
+    apply_flags(r.flags);
+}
+
 void Cpu::xor8(uint8_t rhs) {
     this->a ^= rhs;
     set_z_flag(this->a==0);
@@ -125,6 +131,41 @@ int Cpu::step() {
             break;
         case 0x87:
             add8(this->a);
+            cycles = 4;
+            break;
+        case 0x88:
+            adc8(this->b);
+            cycles = 4;
+            break;
+        case 0x89:
+            adc8(this->c);
+            cycles = 4;
+            break;
+        case 0x8a:
+            adc8(this->d);
+            cycles = 4;
+            break;
+        case 0x8b:
+            adc8(this->e);
+            cycles = 4;
+            break;
+        case 0x8c:
+            adc8(this->h);
+            cycles = 4;
+            break;
+        case 0x8d:
+            adc8(this->l);
+            cycles = 4;
+            break;
+        case 0x8e:
+            {
+                uint16_t hl = static_cast<uint16_t>(h)<<8 | l;
+                adc8(bus.read(hl));
+                cycles = 8;
+                break;
+            }
+        case 0x8f:
+            adc8(this->a);
             cycles = 4;
             break;
         case 0xc6:
