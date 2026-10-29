@@ -55,6 +55,7 @@ TEST_CASE("0xc6: add a, imm8") {
     SUBCASE("no flags") {
         bus.write(0x0001, 0x05);
         cpu.reset();
+        cpu.f = (Cpu::FLAG_Z | Cpu::FLAG_H | Cpu::FLAG_C | Cpu::FLAG_N); // "dirty" flags not propogated
         CHECK(cpu.step() == 8);
         CHECK(cpu.pc == 2);
         CHECK(cpu.a == 0x05);
