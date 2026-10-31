@@ -18,7 +18,7 @@ add_compile_options(-Wall -Wextra -Wpedantic)
 
 option(GAMEBOY_BUILD_TESTS "Build the unit tests" ON)
 
-option(GAMEBOY_SANTIZE "Enable AddressSanitizer + UBSan" OFF)
+option(GAMEBOY_SANITIZE "Enable AddressSanitizer + UBSan" OFF)
 if(GAMEBOY_SANITIZE)
     add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
     add_link_options(-fsanitize=address,undefined)
