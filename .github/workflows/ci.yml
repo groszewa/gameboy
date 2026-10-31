@@ -11,3 +11,32 @@ jobs:
       - uses: actions/checkout@v5
       - name: Build and test
         run: make SANITIZE=ON test
+
+  coverage:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install gcovr
+        run: pip install gcovr
+      - name: Build and run coverage
+        run: make coverage
+      - name: Stage report for Pages
+        run: |
+          mkdir -p pages
+          cp -r coverage pages/
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: pages
+      - id: deployment
+        uses: actions/deploy-pages@v5
