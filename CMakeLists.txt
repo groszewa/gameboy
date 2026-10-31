@@ -24,6 +24,12 @@ if(GAMEBOY_SANITIZE)
     add_link_options(-fsanitize=address,undefined)
 endif()
 
+option(GAMEBOY_COVERAGE "Enable gcov coverage instrumentation" OFF)
+if(GAMEBOY_COVERAGE)
+    add_compile_options(--coverage)
+    add_link_options(--coverage)
+endif()
+
 add_subdirectory(src)
 
 if(GAMEBOY_BUILD_TESTS)

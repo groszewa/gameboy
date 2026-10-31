@@ -1,4 +1,5 @@
-build/
+build*/
+coverage/
 .DS_Store
 *.o
 *.a

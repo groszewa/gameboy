@@ -36,7 +36,7 @@ public:
 private:
     Bus& bus;
 
-    uint8_t fetch8() { return bus.read(pc++); };
+    uint8_t fetch8();
 
     struct Flags {
         bool z, n, h, c;

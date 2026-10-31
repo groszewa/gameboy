@@ -16,6 +16,10 @@ void Cpu::reset() {
     this->pc = 0;
 }
 
+uint8_t Cpu::fetch8() {
+    return bus.read(pc++);
+}
+
 bool Cpu::get_z_flag() {
     return this->f & FLAG_Z;
 }
