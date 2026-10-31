@@ -6,6 +6,7 @@
 
 #include <cstdio>
 #include <string>
+#include <stdexcept>
 
 #include "cpu.h"
 #include "bus.h"
@@ -435,4 +436,12 @@ TEST_CASE("0xee: xor a, imm8") {
                       violations << " violating pairs; first at a=" << hex8(static_cast<uint8_t>(first_a))
                                  << " imm=" << hex8(static_cast<uint8_t>(first_imm)));
     }
+}
+
+TEST_CASE("illegal opcode throws") {
+    Bus bus;
+    Cpu cpu(bus);
+    bus.write(0x0000, 0xd3);
+    cpu.reset();
+    CHECK_THROWS_AS(cpu.step(), std::runtime_error);
 }
