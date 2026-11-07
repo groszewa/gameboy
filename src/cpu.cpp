@@ -176,6 +176,10 @@ int Cpu::step() {
             add8(fetch8());
             cycles = 8;
             break;
+        case 0xce:
+            adc8(fetch8());
+            cycles = 8;
+            break;
         case 0xee:
             xor8(fetch8());
             cycles = 8;

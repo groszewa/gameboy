@@ -48,53 +48,108 @@ static void set_operand(Cpu& cpu, Bus& bus, int idx, uint8_t val) {
     }
 }
 
-TEST_CASE("0xc6: add a, imm8") {
+static void check_add_immediate(uint8_t opcode, bool use_carry) {
     Bus bus;
     Cpu cpu(bus);
-    bus.write(0x0000, 0xc6);
+    bus.write(0x0000, opcode);
 
     SUBCASE("no flags") {
-        bus.write(0x0001, 0x05);
-        cpu.reset();
-        cpu.f = (Cpu::FLAG_Z | Cpu::FLAG_H | Cpu::FLAG_C | Cpu::FLAG_N); // "dirty" flags not propogated
-        CHECK(cpu.step() == 8);
-        CHECK(cpu.pc == 2);
-        CHECK(cpu.a == 0x05);
-        CHECK_MESSAGE(cpu.f == 0x00, "f=" << hex8(cpu.f) << " expected=0x00");
+        for (int cin = 0; cin <= (use_carry ? 1 : 0); ++cin) {
+            int eff_cin = use_carry ? cin : 0;
+            bus.write(0x0001, 0x05);
+            cpu.reset();
+            cpu.f = use_carry ? (cin ? 0xF0 : 0xE0) : 0xF0; // "dirty" flags not propagated
+            CHECK(cpu.step() == 8);
+            CHECK(cpu.pc == 2);
+            CHECK(cpu.a == 0x05 + eff_cin);
+            CHECK_MESSAGE(cpu.f == 0x00, "f=" << hex8(cpu.f) << " expected=0x00");
+        }
     }
     SUBCASE("half carry") {
-        bus.write(0x0001, 0x01);
-        cpu.reset();
-        cpu.a = 0x0f;
-        CHECK(cpu.step() == 8);
-        CHECK(cpu.pc == 2);
-        CHECK(cpu.a == 0x10);
-        CHECK_MESSAGE(cpu.f == Cpu::FLAG_H, "f=" << hex8(cpu.f) << " expected=" << hex8(Cpu::FLAG_H));
+        for (int cin = 0; cin <= (use_carry ? 1 : 0); ++cin) {
+            int eff_cin = use_carry ? cin : 0;
+            bus.write(0x0001, 0x01);
+            cpu.reset();
+            cpu.a = 0x0f;
+            cpu.f = use_carry ? (cin ? 0xF0 : 0xE0) : 0xF0;
+            CHECK(cpu.step() == 8);
+            CHECK(cpu.pc == 2);
+            CHECK(cpu.a == 0x10 + eff_cin);
+            CHECK_MESSAGE(cpu.f == Cpu::FLAG_H, "f=" << hex8(cpu.f) << " expected=" << hex8(Cpu::FLAG_H));
+        }
     }
     SUBCASE("wraps to zero with carry") {
-        bus.write(0x0001, 0x01);
-        cpu.reset();
-        cpu.a = 0xff;
-        CHECK(cpu.step() == 8);
-        CHECK(cpu.pc == 2);
-        CHECK(cpu.a == 0x00);
-        CHECK_MESSAGE(cpu.f == (Cpu::FLAG_Z | Cpu::FLAG_H | Cpu::FLAG_C),
-                      "f=" << hex8(cpu.f) << " expected=" << hex8(static_cast<uint8_t>(Cpu::FLAG_Z | Cpu::FLAG_H | Cpu::FLAG_C)));
+        for (int cin = 0; cin <= (use_carry ? 1 : 0); ++cin) {
+            int eff_cin = use_carry ? cin : 0;
+            bus.write(0x0001, 0x01);
+            cpu.reset();
+            cpu.a = 0xff;
+            cpu.f = use_carry ? (cin ? 0xF0 : 0xE0) : 0xF0;
+            int sum = 0xff + 0x01 + eff_cin;
+            uint8_t exp_a = static_cast<uint8_t>(sum);
+            uint8_t exp_f = (exp_a == 0 ? Cpu::FLAG_Z : 0) | Cpu::FLAG_H | Cpu::FLAG_C;
+            CHECK(cpu.step() == 8);
+            CHECK(cpu.pc == 2);
+            CHECK(cpu.a == exp_a);
+            CHECK_MESSAGE(cpu.f == exp_f, "f=" << hex8(cpu.f) << " expected=" << hex8(exp_f));
+        }
     }
-    SUBCASE("N always clear") {
-        // ADD must never set the subtract flag, for any of the 65536 input pairs.
+    SUBCASE("carry-in alone") {
+        // imm contributes nothing: any change from a is purely the carry-in.
+        for (int cin = 0; cin <= (use_carry ? 1 : 0); ++cin) {
+            int eff_cin = use_carry ? cin : 0;
+            bus.write(0x0001, 0x00);
+            cpu.reset();
+            cpu.a = 0x0f;
+            cpu.f = use_carry ? (cin ? 0xF0 : 0xE0) : 0xF0;
+            uint8_t exp_f = eff_cin ? Cpu::FLAG_H : 0;
+            CHECK(cpu.step() == 8);
+            CHECK(cpu.pc == 2);
+            CHECK(cpu.a == 0x0f + eff_cin);
+            CHECK_MESSAGE(cpu.f == exp_f, "f=" << hex8(cpu.f) << " expected=" << hex8(exp_f));
+        }
+    }
+    SUBCASE("exhaustive model") {
+        // Every (a, imm) pair, under every carry-in state the op admits:
+        // result and full flag byte must match the model. The expected byte
+        // pins N=0 everywhere, subsuming the old "N always clear" loop.
         int violations = 0;
-        for (int a = 0; a < 256; ++a) {
-            for (int imm = 0; imm < 256; ++imm) {
-                bus.write(0x0001, static_cast<uint8_t>(imm));
-                cpu.reset();
-                cpu.a = static_cast<uint8_t>(a);
-                int cycles = cpu.step();
-                if ((cpu.f & Cpu::FLAG_N) or (cycles!=8)) ++violations;
+        int first_a = -1, first_imm = -1, first_cin = -1;
+        for (int cin = 0; cin <= (use_carry ? 1 : 0); ++cin) {
+            int eff_cin = use_carry ? cin : 0;
+            uint8_t preset = use_carry ? (cin ? 0xF0 : 0xE0) : 0xF0;
+            for (int a = 0; a < 256; ++a) {
+                for (int imm = 0; imm < 256; ++imm) {
+                    cpu.reset();
+                    bus.write(0x0001, static_cast<uint8_t>(imm));
+                    cpu.a = static_cast<uint8_t>(a);
+                    cpu.f = preset;
+                    int cycles = cpu.step();
+                    int sum = a + imm + eff_cin;
+                    uint8_t exp_a = static_cast<uint8_t>(sum);
+                    uint8_t exp_f = (exp_a == 0 ? Cpu::FLAG_Z : 0)
+                                  | (((a & 0xF) + (imm & 0xF) + eff_cin) > 0xF ? Cpu::FLAG_H : 0)
+                                  | (sum > 0xFF ? Cpu::FLAG_C : 0);
+                    if ((cpu.a != exp_a) or (cpu.f != exp_f) or (cycles != 8)) {
+                        if (violations == 0) { first_a = a; first_imm = imm; first_cin = cin; }
+                        ++violations;
+                    }
+                }
             }
         }
-        CHECK(violations == 0);
+        CHECK_MESSAGE(violations == 0,
+                      violations << " violating inputs; first at a=" << hex8(static_cast<uint8_t>(first_a))
+                                 << " imm=" << hex8(static_cast<uint8_t>(first_imm))
+                                 << " cin=" << first_cin);
     }
+}
+
+TEST_CASE("0xc6: add a, imm8") {
+    check_add_immediate(0xc6, false);
+}
+
+TEST_CASE("0xce: adc a, imm8") {
+    check_add_immediate(0xce, true);
 }
 
 static void check_add_family(uint8_t opcode_base, bool use_carry) {
