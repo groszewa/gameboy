@@ -1,5 +1,6 @@
 #include "cpu.h"
 #include <sstream>
+#include <stdexcept>
 #include "logging.h"
 
 Cpu::Cpu(Bus& bus_) : bus(bus_), ucode(GAMEBOY_OPCODES_JSON){}

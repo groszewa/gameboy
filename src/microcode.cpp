@@ -1,5 +1,7 @@
+#include <format>
 #include <fstream>
 #include <nlohmann/json.hpp>
+#include <stdexcept>
 #include "microcode.h"
 #include "logging.h"
 
