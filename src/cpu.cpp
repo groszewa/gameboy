@@ -2,7 +2,7 @@
 #include <sstream>
 #include "logging.h"
 
-Cpu::Cpu(Bus& bus_) : bus(bus_){}
+Cpu::Cpu(Bus& bus_) : bus(bus_), ucode(GAMEBOY_OPCODES_JSON){}
 
 void Cpu::reset() {
     this->a = 0;
@@ -99,96 +99,75 @@ void Cpu::xor8(uint8_t rhs) {
 
 int Cpu::step() {
     uint8_t opcode = fetch8();
-    int cycles = 0; // Referece: https://gbdev.io/gb-opcodes/optables/
-    //GB_LOG("Current opcode is 0x%x\n", opcode);
+    const OpcodeInfo& info = ucode.unprefixed[opcode];
     switch(opcode) {
         case 0x80:
             add8(this->b);
-            cycles = 4;
             break;
         case 0x81:
             add8(this->c);
-            cycles = 4;
             break;
         case 0x82:
             add8(this->d);
-            cycles = 4;
             break;
         case 0x83:
             add8(this->e);
-            cycles = 4;
             break;
         case 0x84:
             add8(this->h);
-            cycles = 4;
             break;
         case 0x85:
             add8(this->l);
-            cycles = 4;
             break;
         case 0x86:
             {
                 uint16_t hl = static_cast<uint16_t>(h)<<8 | l;
                 add8(bus.read(hl));
-                cycles = 8;
             }
             break;
         case 0x87:
             add8(this->a);
-            cycles = 4;
             break;
         case 0x88:
             adc8(this->b);
-            cycles = 4;
             break;
         case 0x89:
             adc8(this->c);
-            cycles = 4;
             break;
         case 0x8a:
             adc8(this->d);
-            cycles = 4;
             break;
         case 0x8b:
             adc8(this->e);
-            cycles = 4;
             break;
         case 0x8c:
             adc8(this->h);
-            cycles = 4;
             break;
         case 0x8d:
             adc8(this->l);
-            cycles = 4;
             break;
         case 0x8e:
             {
                 uint16_t hl = static_cast<uint16_t>(h)<<8 | l;
                 adc8(bus.read(hl));
-                cycles = 8;
                 break;
             }
         case 0x8f:
             adc8(this->a);
-            cycles = 4;
             break;
         case 0xc6:
             add8(fetch8());
-            cycles = 8;
             break;
         case 0xce:
             adc8(fetch8());
-            cycles = 8;
             break;
         case 0xee:
             xor8(fetch8());
-            cycles = 8;
             break;
         default:
             std::ostringstream msg;
-        
             msg << "Unknown opcode 0x" << std::hex << static_cast<int>(opcode);
             throw std::runtime_error(msg.str());
     }
-    return cycles;
+    return info.cycles;
 }

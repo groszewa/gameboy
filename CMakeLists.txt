@@ -32,10 +32,17 @@ endif()
 
 add_subdirectory(src)
 
+include(FetchContent)
+FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG v3.11.3
+)
+FetchContent_MakeAvailable(nlohmann_json)
+
 if(GAMEBOY_BUILD_TESTS)
     # doctest: single-header test framework, fetched at configure time.
     # Needs network once; afterwards CMake caches it in the build dir.
-    include(FetchContent)
     FetchContent_Declare(
         doctest
         GIT_REPOSITORY https://github.com/doctest/doctest.git

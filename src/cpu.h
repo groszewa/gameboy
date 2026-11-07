@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include "bus.h"
+#include "microcode.h"
 
 // Sharp LR35902 CPU core.
 // Reference: Pan Docs (https://gbdev.io/pandocs/) — CPU registers & instruction set.
@@ -35,6 +36,7 @@ public:
 
 private:
     Bus& bus;
+    Microcode ucode;
 
     uint8_t fetch8();
 
